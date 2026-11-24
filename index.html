@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>SG Relocation 工作台</title>
+<style>
+/* Pages publishes only review-update. The remaining Artifact UI is retained as legacy source. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --surface-2:#eaeeec; --line:#d5dcd9;
+  --fg:#17211e; --muted:#5b6a65; --accent:#0d6b5a; --accent-soft:#d8ece6;
+  --todo:#6b7873; --todo-bg:#eceff0;
+  --doing:#1f5fae; --doing-bg:#dfe9f7;
+  --blocked:#9a5b00; --blocked-bg:#fbecd2;
+  --done:#2c7a3f; --done-bg:#dcf0e0;
+  --danger:#b4232c; --danger-bg:#f8dfe0;
+  --board:#14201d; --board-fg:#f1d57a; --board-muted:#9fb3ac;
+  --f-display:"Archivo","Noto Sans TC",system-ui,sans-serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1513; --surface:#17201d; --surface-2:#1f2a26; --line:#2d3a36;
+  --fg:#e6ece9; --muted:#9aaaa4; --accent:#4fc1a6; --accent-soft:#163a32;
+  --todo:#a3b0ab; --todo-bg:#24302c;
+  --doing:#8ab6f0; --doing-bg:#1a2c45;
+  --blocked:#f0b860; --blocked-bg:#3a2a10;
+  --done:#7fd193; --done-bg:#163222;
+  --danger:#f2858b; --danger-bg:#3d1a1d;
+  --board:#0a0f0d; --board-fg:#f1d57a; --board-muted:#8aa099;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#0f1513; --surface:#17201d; --surface-2:#1f2a26; --line:#2d3a36;
+  --fg:#e6ece9; --muted:#9aaaa4; --accent:#4fc1a6; --accent-soft:#163a32;
+  --todo:#a3b0ab; --todo-bg:#24302c;
+  --doing:#8ab6f0; --doing-bg:#1a2c45;
+  --blocked:#f0b860; --blocked-bg:#3a2a10;
+  --done:#7fd193; --done-bg:#163222;
+  --danger:#f2858b; --danger-bg:#3d1a1d;
+  --board:#0a0f0d; --board-fg:#f1d57a; --board-muted:#8aa099;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:24px 64px;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:clamp(24px,4vw,32px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:18px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+h2 small{font-family:var(--f-body);font-size:13px;font-weight:400;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px}
+.route{font-family:var(--f-mono);font-size:13px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.sync{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--todo)}
+.sync.ok .dot{background:var(--done)} .sync.err .dot{background:var(--danger)}
+
+/* departures board */
+.board{background:var(--board);color:var(--board-fg);border-radius:var(--r);padding:14px 16px;overflow-x:auto}
+.board table{border-collapse:collapse;width:100%;min-width:520px;font-family:var(--f-mono)}
+.board th{font-weight:500;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--board-muted);text-align:left;padding:0 10px 8px 0}
+.board td{padding:6px 10px 6px 0;border-top:1px solid rgba(255,255,255,.08);font-size:14px;white-space:nowrap}
+.board td.lbl{font-family:var(--f-body);white-space:normal;color:#f4f1e6}
+.board td.t{text-align:right;font-weight:600}
+.board tr.key td{color:#ffd65c}
+.board .past{opacity:.45}
+.notice{font-size:13px;color:var(--muted);margin-top:8px}
+.review-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:10px}
+.review-links{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px}
+.review-links a{color:var(--accent)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:20px}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+section{display:flex;flex-direction:column;gap:12px;min-width:0}
+
+.focus{display:flex;flex-direction:column;gap:10px}
+.fcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+.fcard .top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fcard .ttl{font-weight:700}
+.fcard .who{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;font-size:14px}
+.fcard .who b{font-weight:500;color:var(--muted);font-size:13px}
+.fcard.alldone{opacity:.55}
+
+.waiting{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.waiting div.row{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-top:1px solid var(--line);font-size:14px}
+.waiting div.row:first-child{border-top:0}
+.waiting .ids{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+
+.idtag{font-family:var(--f-mono);font-size:12px;font-weight:600;padding:1px 6px;border-radius:5px;background:var(--surface-2);color:var(--fg);border:1px solid var(--line);white-space:nowrap}
+button.idtag:hover{border-color:var(--accent)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;text-align:left;display:flex;flex-direction:column;gap:8px}
+.tile:hover{border-color:var(--accent)}
+.tile[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tile .h{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.tile .n{font-weight:700}
+.tile .c{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.bar{height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar .d{background:var(--done)} .bar .g{background:var(--doing)}
+.tile .s{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}
+.tile .s .b{color:var(--blocked)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px;font-size:13px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.toolbar .spacer{flex:1}
+.toolbar .clear{font-size:13px;color:var(--accent);background:none;border:0;padding:4px}
+
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.phase>summary{list-style:none;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline;padding:12px 14px;cursor:pointer;background:var(--surface-2)}
+.phase>summary::-webkit-details-marker{display:none}
+.phase>summary h3{font-size:15px;font-weight:600}
+.phase>summary .meta{font-size:13px;color:var(--muted)}
+.phase>summary::before{content:"▸";color:var(--muted);transition:transform .15s}
+.phase[open]>summary::before{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.phase>summary::before{transition:none}}
+
+.item{border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.irow{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:9px 14px}
+.irow .title{min-width:0}
+.item.done .title{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+.due{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.due.soon{color:var(--blocked);font-weight:600}
+.due.over{color:var(--danger);font-weight:600}
+.owner{font-size:12px;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.owner.you{color:var(--fg);border-color:var(--fg)}
+.owner.claude{color:var(--accent);border-color:var(--accent)}
+.owner.both{color:var(--doing);border-color:var(--doing)}
+.blk{display:block;font-size:12.5px;color:var(--blocked)}
+.hasnote{font-size:12px;color:var(--muted)}
+.icon{border:1px solid transparent;background:none;border-radius:6px;padding:3px 7px;font-size:13px;color:var(--muted);white-space:nowrap}
+.icon:hover{border-color:var(--line);color:var(--fg)}
+@media (max-width:640px){
+  .irow{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"st title more" "st meta meta"}
+  .irow .st{grid-area:st} .irow .title{grid-area:title} .irow .more{grid-area:more}
+  .irow .id,.irow .due,.irow .owner{grid-area:auto}
+  .irow .id{display:none}
+  .irow .metaline{grid-area:meta;display:flex;gap:8px;align-items:center}
+}
+@media (min-width:641px){ .irow .metaline{display:contents} }
+
+.status{position:relative}
+.stbtn{border:0;border-radius:6px;padding:3px 9px;font-size:12.5px;font-weight:500;white-space:nowrap;min-width:64px}
+.s-todo{background:var(--todo-bg);color:var(--todo)}
+.s-doing{background:var(--doing-bg);color:var(--doing)}
+.s-blocked{background:var(--blocked-bg);color:var(--blocked)}
+.s-done{background:var(--done-bg);color:var(--done)}
+.menu{position:absolute;z-index:5;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px;display:flex;flex-direction:column;gap:2px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.menu button{border:0;text-align:left;border-radius:5px;padding:5px 10px;font-size:13px;white-space:nowrap}
+
+.detail{padding:0 14px 14px 14px;display:grid;gap:8px;grid-template-columns:minmax(0,1fr)}
+.detail label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.detail textarea,.detail input,.add input,.add select{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 9px;width:100%}
+.detail textarea{min-height:72px;resize:vertical}
+.detail .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--surface);border-radius:7px;padding:6px 12px;font-size:13px;font-weight:500}
+.btn.ghost{background:none;color:var(--accent)}
+.detail a{color:var(--accent);font-size:13px}
+.saved{font-size:12px;color:var(--done)}
+
+.add{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:120px minmax(0,1fr) 110px 120px auto;gap:8px;align-items:end}
+.add label{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+@media (max-width:760px){.add{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.add .wide{grid-column:1/-1}}
+
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:28px;text-align:center;color:var(--muted)}
+.howto{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.howto div{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-size:14px}
+.howto code{font-family:var(--f-mono);font-size:13px;background:var(--accent-soft);color:var(--fg);padding:1px 6px;border-radius:5px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;z-index:20}
+</style>
+</head>
+<body>
+<main class="wrap">
+<header><div><div class="route">SG Relocation · 核讀進度</div><h1>SG Relocation 工作台</h1></div><div class="sync ok"><span class="dot"></span>GitHub Pages · 核讀版</div></header>
+<section id="review-update" aria-labelledby="h-review">
+    <h2 id="h-review">最新核讀進度 <small><time datetime="2026-11-24T09:40:36+08:00">2026-11-24 09:40 新加坡</time> · GitHub Pages</small></h2>
+    <p class="notice">公開精簡核讀版，由 GitHub 提交發布，不依賴 Claude Artifact。頁面只供核讀，不能直接修改待辦；舊 db／JSON 快照未改，也未遷移完整 Work Items。</p>
+    <div class="review-grid">
+      <article class="fcard">
+        <h3>搬家海運 <span class="stbtn s-doing">執行階段</span></h3>
+        <div>本人已確認進入執行，不重開搬家公司評選或合同問卷。取件、簽付及最終出運的具體完成狀態仍按原件／本人最新確認，不從摘要推斷。</div>
+      </article>
+      <article class="fcard">
+        <h3>Tencent <span class="stbtn s-todo">本人處理</span></h3>
+        <div>回覆由本人保留處理；未取得新的 EP／HR 書面結論，不把舊郵件的預計更新日當成獲批日。</div>
+      </article>
+      <article class="fcard">
+        <h3>航班 <span class="stbtn s-blocked">待核實</span></h3>
+        <div>12/2 PEK／PKX → SIN 直飛是規劃基準，不是已訂票。當日班表、票價、行李與改退條款仍待核實；抵達／入職日期保留 EP 與 HR 確認條件。</div>
+      </article>
+    </div>
+    <h3>租房：只精選高信心資料，不再追求全渠道抓完</h3>
+    <div class="cols">
+      <article class="fcard">
+        <h3>Balmoral Luck · 4樓 Room 41</h3>
+        <div><strong>租金 S$1,650＋水電網 S$100＝S$1,750/月</strong>；另每年 S$200 冷氣保養。頁首 S$1,600 不是這間房的詳情報價；較便宜 Room 78 已標 TAKEN。</div>
+        <div>全文明列獨衛、無同住屋主、可小煮、有窗及冷氣；廣告稱可立即入住。詳情核讀：11/24 01:35；原始發布：11/23 15:13（新加坡）。</div>
+        <div class="blk">尚欠：當前空房、實際入住日、租約／完整費用、仲介權限、照片與 Room 41 對應，以及門到門 ≤30 分鐘通勤。不是全條件已確認的推薦。</div>
+        <div class="review-links"><a href="https://www.99.co/singapore/rooms/property/balmoral-luck-condo-VoQUrZVcvkT2Q6dCqnenPU" target="_blank" rel="noopener">房源原頁 ↗</a></div>
+      </article>
+      <article class="fcard">
+        <h3>CasaLyve · 134 Joo Chiat Place</h3>
+        <div><strong>主人房 S$1,500/月起</strong>；租期不足6個月加 S$300/月，水電另算。最短3個月；一年租約另列 S$180 冷氣保養，較短租期費用未明。</div>
+        <div>11/24 09:31–09:36 重讀業者頁仍顯示 Room Available；與11/23 15:40原始貼文的同一房型／預約連結相符。貼文明列獨衛、無屋主、可煮及冷氣。</div>
+        <div class="blk">尚欠：實際空房／指定房價、房間窗戶、業者出租權限、完整費用及門到門通勤。網站空房標籤不是房東確認或保留房間。</div>
+        <div class="review-links"><a href="https://www.casalyve.com/properties-1/134-joo-chiat-place%2C-singapore-427866" target="_blank" rel="noopener">業者房源 ↗</a><a href="https://www.casalyve.com/faqs" target="_blank" rel="noopener">租期與費用 ↗</a></div>
+      </article>
+    </div>
+    <details class="phase">
+      <summary><h3>證據範圍與尚未完成的部分</h3></summary>
+      <div class="detail">
+        <div>原始採集窗口：11/22 21:51–11/23 21:51（新加坡）。Facebook 9群、小紅書6組搜尋已保存；99.co已至49頁，48–49頁確認日期邊界，4個房源詳情已全文核讀。發布時間、更新時間和抓取時間分開記錄。</div>
+        <div>不是所有渠道完整，也不把貼文數當可租房數。微信／部分平台原始日期仍有缺口；本輪不再為「全抓完」擴大採集。</div>
+        <div>高信心指已核讀的來源、價格與廣告條件，不代表空房、合法租約或所有需求已確認。通勤仍待核實；自行車估時、到車站步行或車站間時間不能代替門到門達標證據。</div>
+        <div>未聯絡房東、預約看房、訂房或輸入護照資料。原始採集檔、照片及私有執行紀錄不隨本次 GitHub 更新上傳。</div>
+      </div>
+    </details>
+    <div class="review-links"><a href="https://github.com/adrianwu8516/SG_live/blob/main/00-baseline/Singapore_Relocation_Deep_Research_v3_2026-10-06.md" target="_blank" rel="noopener">私人 Master §0.1／10.6／43.6（需登入）↗</a><a href="https://github.com/adrianwu8516/SG_live/blob/main/02-housing-running-cost/20261006-housing-running-cost.md" target="_blank" rel="noopener">私人租房執行紀錄（需登入）↗</a></div>
+  </section>
+</main>
+</body>
+</html>
